@@ -1,12 +1,13 @@
 extern crate dotenv;
 mod piwka;
+mod roles;
 use dotenv::dotenv;
 use piwka::LISTA_PIWEK;
 use poise::serenity_prelude as serenity;
 use poise::Event;
 use rand::seq::SliceRandom;
+use roles::REACTION_ROLES;
 use serenity::model::prelude::*;
-use std::collections::HashMap;
 use std::env;
 
 async fn event_handler(
@@ -25,71 +26,40 @@ async fn event_handler(
                 let message_id = _interaction.message.id;
                 let choice = _interaction.data.custom_id.clone();
                 let mut member = _interaction.clone().member.unwrap();
+                // find all roles with message_id
+                let roles = REACTION_ROLES
+                    .iter()
+                    .filter(|role| role.message_id == message_id)
+                    .collect::<Vec<_>>();
 
-                if message_id == MessageId(1158079176096628856) {
-                    let mut roles = HashMap::new();
-
-                    roles.insert("Grupa 1", RoleId(1157242625770934282));
-                    roles.insert("Grupa 2", RoleId(1157272733445529640));
-                    roles.insert("Grupa 3", RoleId(1157272763317362749));
-
-                    for role in roles.values() {
-                        member.remove_role(&ctx, role).await.unwrap();
-                    }
-
-                    let role = roles.get(&choice as &str).unwrap();
-                    member.add_role(&ctx, role).await.unwrap();
-
-                    _interaction
-                        .create_interaction_response(&ctx, |r| {
-                            r.kind(InteractionResponseType::ChannelMessageWithSource)
-                                .interaction_response_data(|d| {
-                                    d.ephemeral(true).content(format!(
-                                        "Grupa dziekańska została ustawiona na **{}**",
-                                        choice
-                                    ))
-                                })
-                        })
-                        .await
-                        .unwrap();
-                } else if message_id == MessageId(1158079666087796816) {
-                    let mut roles = HashMap::new();
-
-                    roles.insert("Grupa 1", RoleId(1157272795902918657));
-                    roles.insert("Grupa 2", RoleId(1157272860293877814));
-                    roles.insert("Grupa 3", RoleId(1157272882704035850));
-                    roles.insert("Grupa 4", RoleId(1157272923523006494));
-                    roles.insert("Grupa 5", RoleId(1157272960810373191));
-                    roles.insert("Grupa 6", RoleId(1157272990069817436));
-
-                    for role in roles.values() {
-                        member.remove_role(&ctx, role).await.unwrap();
-                    }
-
-                    let role = roles.get(&choice as &str).unwrap();
-                    member.add_role(&ctx, role).await.unwrap();
-
-                    _interaction
-                        .create_interaction_response(&ctx, |r| {
-                            r.kind(InteractionResponseType::ChannelMessageWithSource)
-                                .interaction_response_data(|d| {
-                                    d.ephemeral(true).content(format!(
-                                        "Grupa labolatoryjna została ustawiona na **{}**",
-                                        choice
-                                    ))
-                                })
-                        })
-                        .await
-                        .unwrap();
-                } else {
-                    println!("{:?}", 2);
+                for role in roles.iter() {
+                    member.remove_role(&ctx, role.role_id).await.unwrap();
                 }
+
+                let choiced_role = roles
+                    .iter()
+                    .find(|role| role.interaction_id == choice)
+                    .unwrap();
+
+                member.add_role(&ctx, choiced_role.role_id).await.unwrap();
+
+                _interaction
+                    .create_interaction_response(&ctx, |r| {
+                        r.kind(InteractionResponseType::ChannelMessageWithSource)
+                            .interaction_response_data(|d| {
+                                d.ephemeral(true)
+                                    .content(format!("Przydzielono ci **{}**", choice))
+                            })
+                    })
+                    .await
+                    .unwrap();
             }
         }
         _ => {}
     }
     Ok(())
 }
+
 /// Daje ci randomowe piwko do wypicia
 #[poise::command(slash_command, prefix_command)]
 async fn piwko(ctx: Context<'_>) -> Result<(), Error> {
@@ -124,6 +94,9 @@ async fn main() {
         .intents(intents)
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
+                ctx.set_presence(Some(Activity::playing("jebać PE")), OnlineStatus::Online)
+                    .await;
+
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {})
             })
