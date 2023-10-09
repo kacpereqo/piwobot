@@ -74,12 +74,16 @@ use poise::Event;
 use rand::seq::SliceRandom;
 use serenity::model::prelude::*;
 use std::collections::HashMap;
+extern crate dotenv;
+
+use dotenv::dotenv;
+use std::env;
 
 async fn event_handler(
     ctx: &serenity::Context,
     event: &Event<'_>,
     _framework: poise::FrameworkContext<'_, Data, Error>,
-    data: &Data,
+    _data: &Data,
 ) -> Result<(), Error> {
     match event {
         Event::Ready { data_about_bot } => {
@@ -169,10 +173,14 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MEMBERS;
+
+    let token = env::var("TOKEN").unwrap();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -182,7 +190,7 @@ async fn main() {
             commands: vec![piwko()],
             ..Default::default()
         })
-        .token("MTE1NzQxOTcyMzEzMTIxMTg5Ng.GU2Afi.UfX_vP1D66vIKXzLvDDhB8lFJwToT1DQTrOc-k")
+        .token(token)
         .intents(intents)
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
